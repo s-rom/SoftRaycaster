@@ -7,8 +7,8 @@
 #include "sphere.h"
 #include "ray.h"
 
-const int SCREEN_WIDTH = 600;
-const int SCREEN_HEIGHT = 600;
+const int SCREEN_WIDTH = 640;
+const int SCREEN_HEIGHT = 360;
 const int CANVAS_WIDTH = SCREEN_WIDTH;
 const int CANVAS_HEIGHT = SCREEN_HEIGHT;
 
@@ -64,14 +64,7 @@ void render_spheres(const render_context& context, SDL_Renderer* renderer, std::
 			r.direction = glm::normalize(viewport_point - r.origin);
 			r.t_min = context.distance;
 			r.t_max = std::numeric_limits<float>::infinity();
-
-			std::cout << "ray: [" << origin.x << ", " << origin.y << ", "<< origin.z <<
-				"] dir: [" << r.direction.x << ", " << r.direction.y <<", "<<r.direction.z << "] \n";
-
-
 			color = r.trace_spheres(spheres, back_color);
-
-		
 
 			if (color.x != 0)
 				std::cout << "color: " << color.x << "\n";
@@ -81,6 +74,33 @@ void render_spheres(const render_context& context, SDL_Renderer* renderer, std::
 		}
 	}
 
+}
+
+void save_renderer_state_as_BMP(SDL_Renderer * renderer, const char * file_name)
+{
+	SDL_Surface* sshot = SDL_CreateRGBSurface
+	(
+		0, 
+		CANVAS_WIDTH, 
+		CANVAS_HEIGHT, 
+		32, 
+		0x00ff0000, 
+		0x0000ff00, 
+		0x000000ff, 
+		0xff000000
+	);
+	
+	SDL_RenderReadPixels
+	(
+		renderer, 
+		NULL,
+		SDL_PIXELFORMAT_ARGB8888, 
+		sshot->pixels, 
+		sshot->pitch
+	);
+
+	SDL_SaveBMP(sshot, file_name);
+	SDL_FreeSurface(sshot);
 }
 
 
@@ -111,24 +131,28 @@ int main(int argc, char** argv)
 
 	context.canvas_width = CANVAS_WIDTH;
 	context.canvas_height = CANVAS_HEIGHT;
+	const int aspect_ratio = CANVAS_WIDTH / CANVAS_HEIGHT;
+	context.viewport = { aspect_ratio , 1 };
 	context.distance = 1;
-	context.viewport = { 1, 1 };
 	context.screen_width = SCREEN_WIDTH;
 	context.screen_height = SCREEN_HEIGHT;
 
-
+	
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
 	SDL_RenderClear(renderer);
 
-	
 
 	std::vector<sphere> spheres;
-	spheres.push_back({ .center = {0, -1, 3}, .radius = 1, .color = {255,0,0} });
+	spheres.push_back({ .center = {0, -1, 13}, .radius = 1, .color = {194, 14, 14} });
+	spheres.push_back({ .center = {-2, -0.5, 5}, .radius = 0.5, .color = {7, 168, 23} });
+	spheres.push_back({ .center = {1, -0.2, 2}, .radius = 0.2, .color = {49, 68, 235} });
+	spheres.push_back({ .center = {0.4, -0.4, 3}, .radius = 0.4, .color = {76, 50, 168} });
 
 	render_spheres(context, renderer, spheres);
 	std::cout << "Done rendering!\n";
-
 	SDL_RenderPresent(renderer);
+	save_renderer_state_as_BMP(renderer, "hola.bmp");
+
 
 
 	do
