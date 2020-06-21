@@ -4,11 +4,13 @@
 #include "glm/vec3.hpp"
 #include "glm/vec2.hpp"
 
+#include "geometry_scene.h"
 #include "sphere.h"
 #include "ray.h"
+#include "util.h"
 
-const int SCREEN_WIDTH = 640;
-const int SCREEN_HEIGHT = 360;
+const int SCREEN_WIDTH = 1920;
+const int SCREEN_HEIGHT = 1080;
 const int CANVAS_WIDTH = SCREEN_WIDTH;
 const int CANVAS_HEIGHT = SCREEN_HEIGHT;
 
@@ -23,7 +25,7 @@ struct render_context
 } context;
 
 void draw_pixel(SDL_Renderer * r, int x, int y, SDL_Color color);
-void render_spheres(const render_context& context, SDL_Renderer* renderer, std::vector<sphere> spheres);
+void render_scene(const render_context& context, SDL_Renderer* renderer, geometry_scene& scene);
 
 void draw_pixel(SDL_Renderer *r, int x, int y, SDL_Color color)
 {
@@ -43,34 +45,41 @@ glm::vec3 canvas_to_viewport(float cx, float cy, const render_context & context)
 
 
 
-void render_spheres(const render_context& context, SDL_Renderer* renderer, std::vector<sphere> spheres)
+void render_scene(const render_context& context, SDL_Renderer* renderer, geometry_scene & scene)
 {
-	glm::vec3 back_color = { 0, 0, 0 };
+	glm::vec3 back_color = { 255, 255, 255 };
 	glm::vec3 origin = { 0, 0, 0 };
 	glm::vec3 color = back_color;
+	ray r;
+	
+    int half_w = context.screen_width/2;
+    int half_h = context.screen_height/2;
 
-	for (int sx = 0; sx < context.screen_width; sx++)
+	for (int cx = -half_w; cx < half_w; cx++)
 	{
-		for (int sy = 0; sy < context.screen_height; sy++)
+		for (int cy = -half_h; cy < half_h; cy++)
 		{
-			float cx = sx - context.screen_width / 2;
-			float cy = context.screen_height / 2 - sy;
 
 			glm::vec3 viewport_point = canvas_to_viewport(cx, cy, context);
-
-
-			ray r;
+           
 			r.origin = origin;
-			r.direction = glm::normalize(viewport_point - r.origin);
-			r.t_min = context.distance;
+			r.direction = viewport_point - r.origin;
+			r.t_min = 1;
 			r.t_max = std::numeric_limits<float>::infinity();
-			color = r.trace_spheres(spheres, back_color);
 
-			if (color.x != 0)
-				std::cout << "color: " << color.x << "\n";
+			int sx = context.canvas_width / 2 + cx;
+			int sy = context.canvas_height / 2 - cy - 1;
 
+			if (sx < 0 || sx >= context.canvas_width ||
+				sy < 0 || sy >= context.canvas_height) continue;
+
+
+			color = r.trace_scene(scene, back_color);
+			
+			
 			SDL_Color colr = { color.x, color.y, color.z };
-			draw_pixel(renderer, sx, sy, colr);
+     
+            draw_pixel(renderer, sx, sy, colr);
 		}
 	}
 
@@ -104,9 +113,9 @@ void save_renderer_state_as_BMP(SDL_Renderer * renderer, const char * file_name)
 }
 
 
-
 int main(int argc, char** argv)
 {
+	
 
 	SDL_Init(SDL_INIT_EVERYTHING);
 	SDL_Window* window = SDL_CreateWindow
@@ -131,7 +140,7 @@ int main(int argc, char** argv)
 
 	context.canvas_width = CANVAS_WIDTH;
 	context.canvas_height = CANVAS_HEIGHT;
-	const int aspect_ratio = CANVAS_WIDTH / CANVAS_HEIGHT;
+	const float aspect_ratio = (float) CANVAS_WIDTH / (float) CANVAS_HEIGHT;
 	context.viewport = { aspect_ratio , 1 };
 	context.distance = 1;
 	context.screen_width = SCREEN_WIDTH;
@@ -142,20 +151,35 @@ int main(int argc, char** argv)
 	SDL_RenderClear(renderer);
 
 
-	std::vector<sphere> spheres;
-	spheres.push_back({ .center = {0, -1, 13}, .radius = 1, .color = {194, 14, 14} });
-	spheres.push_back({ .center = {-2, -0.5, 5}, .radius = 0.5, .color = {7, 168, 23} });
-	spheres.push_back({ .center = {1, -0.2, 2}, .radius = 0.2, .color = {49, 68, 235} });
-	spheres.push_back({ .center = {0.4, -0.4, 3}, .radius = 0.4, .color = {76, 50, 168} });
+	geometry_scene scene;
 
-	render_spheres(context, renderer, spheres);
+	scene.spheres.push_back({ .center = {0, 0, 13}, .radius = 1, .color = {194, 14, 14} });
+	scene.spheres.push_back({ .center = {-2, -0.5, 5}, .radius = 0.5, .color = {7, 168, 23} });
+	scene.spheres.push_back({ .center = {1, -0.2, 2}, .radius = 0.2, .color = {49, 68, 235} });
+	scene.spheres.push_back({ .center = {0.4, -0.4, 3}, .radius = 0.4, .color = {76, 50, 168} });
+	//scene.planes.push_back({ .normal = {0,1,0}, .point = {0,-1,0}, .color = {255, 255, 0} });
+	scene.spheres.push_back({ .center = {0, -5001, 0}, .radius = 5000, .color = {255, 255, 0} });
+
+
+	/*
+	scene.spheres.push_back({ .center = {0, -1, 3}, .radius = 1, .color = {255, 0, 0} });
+	scene.spheres.push_back({ .center = {2, 0, 4}, .radius = 1, .color = {0, 0, 255} });
+	scene.spheres.push_back({ .center = {-2, 0, 4}, .radius = 1, .color = {0, 255, 0} });
+	*/
+
+	scene.lights.push_back({ .intensity = 0.2, .type = AMBIENT });
+	scene.lights.push_back({ .origin = {2, 1 , 0}, .intensity = 0.6, .type = POINT });
+	scene.lights.push_back({ .direction = {1, 4, 4}, .intensity = 0.2, .type = DIRECTIONAL });
+
+	
+	render_scene(context, renderer, scene);
 	std::cout << "Done rendering!\n";
 	SDL_RenderPresent(renderer);
-	save_renderer_state_as_BMP(renderer, "hola.bmp");
+	save_renderer_state_as_BMP(renderer, "diffuse.bmp");
 
 
 
-	do
+	/*do
 	{
 		SDL_Event e;
 
@@ -164,7 +188,7 @@ int main(int argc, char** argv)
 			if (e.type == SDL_QUIT)
 				break;
 		}
-	} while (true);
+	} while (true);*/
 
 	return 0;
 }
