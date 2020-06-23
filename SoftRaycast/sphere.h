@@ -8,6 +8,8 @@ struct sphere
 	glm::vec3 center;
 	float radius;
 	glm::vec3 color;
+	int specular;
+	float reflective;
 
 	std::string to_string()
 	{

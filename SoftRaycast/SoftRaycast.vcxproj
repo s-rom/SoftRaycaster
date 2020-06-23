@@ -91,10 +91,12 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="camera.h" />
     <ClInclude Include="geometry_scene.h" />
     <ClInclude Include="light.h" />
     <ClInclude Include="plane.h" />
     <ClInclude Include="ray.h" />
+    <ClInclude Include="raytrace.h" />
     <ClInclude Include="sphere.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>
